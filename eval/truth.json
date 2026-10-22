@@ -1,0 +1,92 @@
+[
+ {
+  "id": 1,
+  "label": "12 Rue de la Paroisse 78000 Versailles",
+  "zone_code": "SB",
+  "zone_type": "U",
+  "historic_monument_perimeter": false,
+  "heritage_protected": true,
+  "authorisation": "declaration_prealable"
+ },
+ {
+  "id": 2,
+  "label": "Rue de Paris 93100 Montreuil",
+  "zone_code": "UC91Jb2",
+  "zone_type": "U",
+  "historic_monument_perimeter": false,
+  "heritage_protected": false,
+  "authorisation": "declaration_prealable"
+ },
+ {
+  "id": 3,
+  "label": "8 Rue du Maréchal Foch 78110 Le Vésinet",
+  "zone_code": "UA",
+  "zone_type": "U",
+  "historic_monument_perimeter": false,
+  "heritage_protected": true,
+  "authorisation": "declaration_prealable"
+ },
+ {
+  "id": 4,
+  "label": "5 Rue au Pain 78100 Saint-Germain-en-Laye",
+  "zone_code": null,
+  "zone_type": null,
+  "historic_monument_perimeter": false,
+  "heritage_protected": true,
+  "authorisation": "declaration_prealable"
+ },
+ {
+  "id": 5,
+  "label": "15 Rue Houdan 92330 Sceaux",
+  "zone_code": "U2b",
+  "zone_type": "U",
+  "historic_monument_perimeter": false,
+  "heritage_protected": true,
+  "authorisation": "permis_de_construire"
+ },
+ {
+  "id": 6,
+  "label": "Rue de Fontenay 94300 Vincennes",
+  "zone_code": "UA1",
+  "zone_type": "U",
+  "historic_monument_perimeter": false,
+  "heritage_protected": true,
+  "authorisation": "declaration_prealable"
+ },
+ {
+  "id": 7,
+  "label": "10 Rue du Général Leclerc 92130 Issy-les-Moulineaux",
+  "zone_code": "U1-C-1",
+  "zone_type": "U",
+  "historic_monument_perimeter": true,
+  "heritage_protected": true,
+  "authorisation": "permis_de_construire"
+ },
+ {
+  "id": 8,
+  "label": "Rue de la Roue 92260 Fontenay-aux-Roses",
+  "zone_code": "U1a*",
+  "zone_type": "U",
+  "historic_monument_perimeter": false,
+  "heritage_protected": false,
+  "authorisation": "declaration_prealable"
+ },
+ {
+  "id": 9,
+  "label": "14 Rue Grande 77300 Fontainebleau",
+  "zone_code": "UAf",
+  "zone_type": "U",
+  "historic_monument_perimeter": false,
+  "heritage_protected": true,
+  "authorisation": "declaration_prealable"
+ },
+ {
+  "id": 10,
+  "label": "25 Boulevard de la République 78400 Chatou",
+  "zone_code": "UV",
+  "zone_type": "U",
+  "historic_monument_perimeter": false,
+  "heritage_protected": false,
+  "authorisation": "declaration_prealable"
+ }
+]

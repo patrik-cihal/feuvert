@@ -1,0 +1,12 @@
+[
+ {"id": 1, "address": "12 rue de la Paroisse, 78000 Versailles", "project_type": "extension", "area_m2": 25, "existing_floor_area_m2": 110, "project": "Ground-floor extension, 25 m², flat roof"},
+ {"id": 2, "address": "20 rue de Paris, 93100 Montreuil", "project_type": "solar_roof", "area_m2": 18, "existing_floor_area_m2": 90, "project": "18 m² of solar panels on the roof"},
+ {"id": 3, "address": "8 avenue Foch, 78110 Le Vésinet", "project_type": "pool", "area_m2": 32, "existing_floor_area_m2": 140, "project": "Uncovered pool 8 x 4 m"},
+ {"id": 4, "address": "5 rue au Pain, 78100 Saint-Germain-en-Laye", "project_type": "facade_windows", "area_m2": 0, "existing_floor_area_m2": 100, "project": "Replace wooden windows with aluminium ones"},
+ {"id": 5, "address": "15 rue Houdan, 92330 Sceaux", "project_type": "extension", "area_m2": 35, "existing_floor_area_m2": 120, "project": "Extension 35 m² on the garden side"},
+ {"id": 6, "address": "3 rue de Fontenay, 94300 Vincennes", "project_type": "annex", "area_m2": 12, "existing_floor_area_m2": 100, "project": "Garden shed 12 m²"},
+ {"id": 7, "address": "10 rue du Général Leclerc, 92130 Issy-les-Moulineaux", "project_type": "extension", "area_m2": 45, "existing_floor_area_m2": 100, "project": "Two-storey extension, 45 m²"},
+ {"id": 8, "address": "6 rue de la Liberté, 92260 Fontenay-aux-Roses", "project_type": "pool", "area_m2": 60, "existing_floor_area_m2": 130, "project": "Uncovered pool 12 x 5 m"},
+ {"id": 9, "address": "14 rue Grande, 77300 Fontainebleau", "project_type": "solar_roof", "area_m2": 12, "existing_floor_area_m2": 95, "project": "12 m² of solar panels on the street-side roof"},
+ {"id": 10, "address": "25 rue de la République, 78400 Chatou", "project_type": "extension", "area_m2": 15, "existing_floor_area_m2": 90, "project": "Veranda 15 m²"}
+]

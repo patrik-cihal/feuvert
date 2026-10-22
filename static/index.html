@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FeuVert</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{--bg:#0e1311;--panel:#151c19;--line:#26312c;--text:#e8efe9;--muted:#8fa197;--green:#3ddc84;--amber:#f5b942;--red:#ff6b6b;--blue:#6cb6ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line)}
+.logo{width:14px;height:14px;border-radius:50%;background:var(--green);box-shadow:0 0 14px var(--green)}
+header h1{font-size:18px;margin:0}header p{margin:0;color:var(--muted)}#stats{margin-left:auto;color:var(--muted);font-size:12px}
+main{display:grid;grid-template-columns:340px 1fr 1fr;gap:14px;padding:14px;height:calc(100vh - 62px)}
+@media(max-width:1100px){main{grid-template-columns:1fr;height:auto}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;overflow:auto;min-height:0}
+label{display:block;color:var(--muted);font-size:12px;margin:10px 0 4px}
+input,select,textarea{width:100%;background:#0b100e;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font:inherit}
+textarea{min-height:64px;resize:vertical}.row{display:flex;gap:8px}.row>div{flex:1}
+button{margin-top:14px;width:100%;padding:11px;border:0;border-radius:8px;background:var(--green);color:#06210f;font-weight:700;cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.presets a{font-size:12px;color:var(--blue);cursor:pointer;border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+#map{height:46%;min-height:260px;border-radius:12px;border:1px solid var(--line)}
+#trace{height:calc(54% - 14px);margin-top:14px}.mid{display:flex;flex-direction:column;min-height:0}
+.ev{border-left:2px solid var(--line);padding:4px 0 8px 10px;margin-left:4px;font-size:13px}
+.ev.step{border-color:var(--blue)}.ev.result{border-color:var(--green)}.ev.err{border-color:var(--red)}.ev.think{border-color:#555;color:var(--muted);font-style:italic}
+.ev b{font-family:ui-monospace,Menlo,monospace;font-size:12px}.ev small{color:var(--muted)}
+details summary{cursor:pointer;color:var(--muted);font-size:12px}pre{white-space:pre-wrap;font-size:11px;color:#b9c7bf;margin:4px 0}
+.verdict{font-size:22px;font-weight:800;margin:4px 0 2px}.verdict.dp{color:var(--amber)}.verdict.pc{color:var(--red)}.verdict.none{color:var(--green)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.chip{background:#0b100e;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px}
+h3{margin:16px 0 6px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.c{padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin:6px 0}.c .src{color:var(--muted);font-size:11px;margin-top:3px}
+ul{margin:4px 0;padding-left:18px}.empty{color:var(--muted);text-align:center;margin-top:40%}
+.letter{white-space:pre-wrap;background:#0b100e;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:12px}
+</style>
+</head>
+<body>
+<header><div class="logo"></div><h1>FeuVert</h1><p>Your green light from the town hall: address in, authorisation file out.</p><span id="stats"></span></header>
+<main>
+  <section class="panel">
+    <label>Address</label><input id="address" value="12 rue de la Paroisse, 78000 Versailles">
+    <label>Project</label>
+    <select id="ptype">
+      <option value="extension">Extension</option><option value="annex">Annex (shed, garage)</option><option value="pool">Pool</option>
+      <option value="solar_roof">Solar panels on the roof</option><option value="facade_windows">Windows / facade</option>
+      <option value="fence">Fence</option><option value="heat_pump">Heat pump</option>
+    </select>
+    <div class="row"><div><label>New area m²</label><input id="area" type="number" value="25"></div>
+      <div><label>Existing house m²</label><input id="existing" type="number" value="110"></div></div>
+    <label>Describe it</label><textarea id="project">Ground-floor extension at the back of the house, 25 m², flat roof, 3.5 m high.</textarea>
+    <button id="go">Check what I need to file</button>
+    <div class="presets" id="presets"></div>
+    <div id="meta" style="margin-top:14px;color:var(--muted);font-size:12px"></div>
+  </section>
+  <section class="mid">
+    <div id="map"></div>
+    <div class="panel" id="trace"><div class="empty">The agent's steps appear here.</div></div>
+  </section>
+  <section class="panel" id="result"><div class="empty">The file it prepares appears here.</div></section>
+</main>
+<script>
+const PRESETS=[
+  ["Versailles · extension","12 rue de la Paroisse, 78000 Versailles","extension",25,110,"Ground-floor extension at the back of the house, 25 m², flat roof, 3.5 m high."],
+  ["Montreuil · solar","20 rue de Paris, 93100 Montreuil","solar_roof",18,90,"18 m² of solar panels on the south roof slope."],
+  ["Le Vésinet · pool","8 avenue Foch, 78110 Le Vésinet","pool",32,140,"Uncovered in-ground pool, 8 x 4 m, in the garden."],
+];
+const $=id=>document.getElementById(id);
+const REPLAY=new URLSearchParams(location.search).has("replay");
+if(REPLAY){document.querySelector("header p").innerHTML+=' <span style="background:#f5b942;color:#1a1200;border-radius:6px;padding:2px 8px;font-weight:700;margin-left:8px">REPLAY of a recorded live run</span>';fetch("/api/last_request").then(r=>r.json()).then(q=>{if(q.address){$("address").value=q.address;$("ptype").value=q.project_type||"extension";$("area").value=q.area_m2;$("existing").value=q.existing_floor_area_m2;$("project").value=q.project}})}
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+PRESETS.forEach(p=>{const a=document.createElement("a");a.textContent=p[0];a.onclick=()=>{[$("address").value,$("ptype").value,$("area").value,$("existing").value,$("project").value]=p.slice(1)};$("presets").appendChild(a)});
+
+const HAS_MAP=!!window.L;let map,layers;
+if(HAS_MAP){
+map=L.map("map").setView([46.6,2.4],5);
+const ign=L.tileLayer("https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{maxZoom:19,attribution:"IGN Géoplateforme"}).addTo(map);
+const cad=L.tileLayer("https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=PCI%20vecteur&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{maxZoom:19,opacity:.8}).addTo(map);
+const osm=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"});
+L.control.layers({"Plan IGN":ign,"OpenStreetMap":osm},{"Cadastre":cad}).addTo(map);
+layers=L.layerGroup().addTo(map);
+} else { document.getElementById("map").innerHTML='<div class="empty" style="margin-top:20%">Map unavailable (Leaflet did not load)</div>'; }
+
+async function loadStats(){try{const s=await (await fetch("/api/stats")).json();$("stats").textContent=`data layer: ${s.backend} · ${s.rule_chunks} PLU passages · ${s.memory} memories · ${s.api_cache} cached API answers`}catch(e){}}
+loadStats();
+
+const ICON={geocode_address:"📍",get_parcel:"🧱",get_zoning:"🗺️",get_protections:"🏛️",get_risks:"⚠️",search_zone_rules:"📖",check_national_thresholds:"⚖️",recall_memory:"🧠",submit_report:"✅"};
+function brief(tool,d){
+  if(d.error) return "error: "+d.error;
+  switch(tool){
+    case "geocode_address": return `${d.label} (INSEE ${d.insee})`;
+    case "get_parcel": return `parcel ${d.parcel_id} · ${d.area_m2} m²`;
+    case "get_zoning": return d.zone?`zone ${d.zone.code} (${d.zone.type}) · ${d.zone.label||""}`:(d.note||"no zone");
+    case "get_protections": return `${d.servitudes.length} servitudes, ${d.prescriptions.length} prescriptions${d.historic_monument_perimeter?" · historic-monument perimeter":""}`;
+    case "get_risks": return (d.risks||[]).slice(0,4).join(", ")||"none listed";
+    case "search_zone_rules": return `${(d.passages||[]).length} passages for “${d.query}”`+(d.ingested_now?` · indexed ${d.ingested_now.chunks} chunks`:"");
+    case "check_national_thresholds": return `${d.authorisation} · ${d.form||""} · ${d.review_time_months} month(s)`;
+    case "recall_memory": return `${(d.past||[]).length} past analyses`;
+  } return "";
+}
+function add(cls,html){const t=$("trace");if(t.querySelector(".empty"))t.innerHTML="";const d=document.createElement("div");d.className="ev "+cls;d.innerHTML=html;t.appendChild(d);t.scrollTop=t.scrollHeight}
+
+function onEvent(ev){
+  if(ev.type==="thinking") add("think",esc(ev.text).slice(0,400));
+  else if(ev.type==="text") add("",esc(ev.text));
+  else if(ev.type==="step"){ if(ev.tool!=="submit_report") add("step",`${ICON[ev.tool]||"•"} <b>${ev.tool}</b> <small>${esc(JSON.stringify(ev.input)).slice(0,160)}</small>`) }
+  else if(ev.type==="result"){
+    add(ev.data.error?"err":"result",`<small>${ev.ms} ms</small> ${esc(brief(ev.tool,ev.data))}<details><summary>data</summary><pre>${esc(JSON.stringify(ev.data,null,1)).slice(0,4000)}</pre></details>`);
+    if(HAS_MAP&&ev.tool==="geocode_address"&&ev.data.lat){map.setView([ev.data.lat,ev.data.lon],18);L.marker([ev.data.lat,ev.data.lon]).addTo(layers)}
+    if(HAS_MAP&&ev.tool==="get_parcel"&&ev.data.geometry){const g=L.geoJSON(ev.data.geometry,{style:{color:"#3ddc84",weight:3,fillOpacity:.15}}).addTo(layers);map.fitBounds(g.getBounds(),{maxZoom:19})}
+  }
+  else if(ev.type==="report") renderReport(ev.report);
+  else if(ev.type==="error") add("err","⛔ "+esc(ev.message));
+  else if(ev.type==="done"){ $("meta").textContent=`${ev.seconds}s · ${ev.model} · ${ev.usage.input+ev.usage.output} tokens`; loadStats() }
+}
+
+function renderReport(r){
+  const cls={declaration_prealable:"dp",permis_de_construire:"pc",none:"none"}[r.authorisation]||"";
+  const name={declaration_prealable:"Déclaration préalable",permis_de_construire:"Permis de construire",none:"No authorisation needed",check_commune:"Check with the commune",uncertain:"Uncertain"}[r.authorisation]||r.authorisation;
+  $("result").innerHTML=`<div class="verdict ${cls}">${esc(name)}</div><div>${esc(r.summary)}</div>
+  <div class="chips">${r.form?`<span class="chip">${esc(r.form)}</span>`:""}${r.review_time_months?`<span class="chip">${esc(r.review_time_months)} month review</span>`:""}
+  ${r.architect_required?`<span class="chip">architect required</span>`:""}${r.zone?`<span class="chip">zone ${esc(r.zone)}</span>`:""}${r.parcel?`<span class="chip">parcel ${esc(r.parcel)}</span>`:""}<span class="chip">confidence: ${esc(r.confidence)}</span></div>
+  <h3>Constraints</h3>${(r.constraints||[]).map(c=>`<div class="c"><b>${esc(c.title)}</b><div>${esc(c.detail)}</div><div class="src">${esc(c.source)}</div></div>`).join("")}
+  ${r.risks_of_rejection?.length?`<h3>What gets files bounced</h3><ul>${r.risks_of_rejection.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}
+  <h3>Documents to attach</h3><ul>${(r.documents||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+  <h3>Next steps</h3><ul>${(r.next_steps||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+  ${r.cover_letter_fr?`<h3>Draft note to the mairie</h3><div class="letter">${esc(r.cover_letter_fr)}</div>`:""}`;
+}
+
+$("go").onclick=async()=>{
+  $("go").disabled=true;$("trace").innerHTML="";$("result").innerHTML='<div class="empty">Working…</div>';if(HAS_MAP)layers.clearLayers();$("meta").textContent="";
+  const body={address:$("address").value,project:$("project").value,project_type:$("ptype").value,area_m2:+$("area").value||0,existing_floor_area_m2:+$("existing").value||0};
+  try{
+    const res=REPLAY?await fetch("/api/replay"):await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const reader=res.body.getReader();const dec=new TextDecoder();let buf="";
+    for(;;){const {value,done}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});
+      let i;while((i=buf.indexOf("\n\n"))>=0){const line=buf.slice(0,i);buf=buf.slice(i+2);if(line.startsWith("data: "))onEvent(JSON.parse(line.slice(6)))}}
+  }catch(e){add("err","⛔ "+esc(e))}
+  $("go").disabled=false;
+};
+</script>
+</body>
+</html>
