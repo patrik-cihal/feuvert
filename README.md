@@ -6,6 +6,8 @@ thresholds, and returns which file you need (déclaration préalable / permis de
 every constraint with its source, the documents to attach, and a draft note to the mairie.
 Built at Accel AI Innovate, Paris, 2026-10-22.
 
+**Live:** https://feuvert-paris.fly.dev (replay of a recorded live run: https://feuvert-paris.fly.dev/?replay) · **Demo video:** `pitch/demo-live-run.mp4`
+
 ## Run it (5 minutes)
 
 ```bash
@@ -59,7 +61,7 @@ Run by Accel × Iterate on BuilderBase. Sponsor for infra: **Aiven**. Patrik ent
 
 - [`docs/CRITERIA.md`](docs/CRITERIA.md): the five judging criteria, word for word, and what scores on each
 - [`docs/SUBMISSION.md`](docs/SUBMISSION.md): the five submission items and a checklist
-- [`docs/PLAN.md`](docs/PLAN.md): how to win: time plan, what judges need to see, idea options scored
+
 - [`pitch/`](pitch/): one-liner, 3-minute demo script, one pitch slide (fill in once the idea is picked)
 - [`CLAUDE.md`](CLAUDE.md): rules for Claude sessions building here
 
