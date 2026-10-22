@@ -1,108 +1,87 @@
 # FeuVert: your green light from the town hall
 
-An agent that prepares French building authorisations. Give it an address and a project; it finds the cadastre parcel,
-the PLU zone and protections (free government APIs), reads the zone's rules in the town's PLU, applies the national
-thresholds, and returns which file you need (déclaration préalable / permis de construire), the CERFA, the review time,
-every constraint with its source, the documents to attach, and a draft note to the mairie.
-Built at Accel AI Innovate, Paris, 2026-10-22.
+**For solar and renovation installers in France.** Give FeuVert a client's address and the job (e.g. "18 m² of solar
+panels on the roof"). An AI agent finds the plot, its planning zone and protections in free government data, reads
+that town's own planning rules, applies the national thresholds, and tells you which file to submit to the town hall
+(déclaration préalable or permis de construire), which form, the review time, every constraint with its source, the
+documents to attach and a draft note to the mairie.
 
-**Live:** https://feuvert-paris.fly.dev (replay of a recorded live run: https://feuvert-paris.fly.dev/?replay) · **Demo video:** `pitch/demo-live-run.mp4`
+Built in one day at Accel AI Innovate, Paris, 2026-10-22.
 
-## Run it (5 minutes)
+- **Live app:** https://feuvert-paris.fly.dev (live runs call Claude; each takes 30–60 s)
+- **Recorded live run (no API call):** https://feuvert-paris.fly.dev/?replay
+- **Demo video:** [`pitch/demo-live-run.mp4`](pitch/demo-live-run.mp4) · **Pitch slide:** [`pitch/feuvert-pitch-slide.png`](pitch/feuvert-pitch-slide.png)
+
+## Why
+
+About 1 in 3 French permit and declaration files comes back incomplete, which restarts the review clock. Installers
+file one for nearly every solar job, by hand or through consultants (€250–2,000 a file). A general chatbot can explain
+the rules, but it doesn't know which zone a specific plot is in, whether it sits in a heritage or flood-risk area, or
+what that town's own rules say.
+
+## How it works
+
+```
+address + job
+  └─ agent (Claude Opus 5.5, tool use) decides which source to query next:
+       geocode_address      Base Adresse Nationale (data.geopf.fr)
+       get_parcel           cadastre plot + area (IGN API Carto)
+       get_zoning           planning zone, plan type, link to the town's rules PDF (Géoportail de l'Urbanisme)
+       get_protections      heritage / historic-monument / risk-plan easements and plan prescriptions
+       get_risks            Géorisques
+       recall_memory        past analyses of this plot / town
+       search_zone_rules    full-text search in that zone's rules (PDF downloaded and indexed on first use)
+       check_national_thresholds   Code de l'urbanisme: DP vs PC, form, review time, architect
+  └─ submit_report: authorisation, form, timeline, constraints (each with its source), documents, next steps
+```
+
+Data layer (`app/db.py`): SQLite locally and in the live demo, PostgreSQL when `DATABASE_URL` is set.
+- `rule_chunks`: each town's rules split into zone-tagged passages with a full-text index (1,316 passages in the demo:
+  Versailles PSMV 117 pages, Montreuil PLUi 635 pages)
+- `api_cache`: every government answer, so repeat lookups are instant
+- `memory`: every analysis stored per plot and per town and recalled on the next run
+
+## Results (3 live runs, 2026-10-22)
+
+| Metric | One Claude call, no data | FeuVert agent |
+|---|---|---|
+| Zone of the plot correct | 0/3 | 3/3 |
+| Authorisation type correct | 3/3 | 3/3 |
+
+Ground truth comes from the Géoportail de l'Urbanisme (`scripts/build_truth.py`), not from a model. Small sample;
+details in [`eval/RESULTS.md`](eval/RESULTS.md). Ignore the "historic-monument perimeter" row there: its keyword
+scoring was too crude to mean anything.
+
+## Run it
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env            # put ANTHROPIC_API_KEY (hackathon credits); DATABASE_URL = Aiven Postgres URI, or leave empty for SQLite
+cp .env.example .env              # set ANTHROPIC_API_KEY; optional DATABASE_URL (PostgreSQL), else SQLite
 set -a; source .env; set +a
-python -m tests.test_smoke      # offline check, no API calls
-uvicorn app.main:app --reload   # http://localhost:8000
+python -m tests.test_smoke        # offline test, no API calls
+uvicorn app.main:app --reload     # http://localhost:8000
 ```
 
-**First 5 minutes on the venue Wi-Fi:** check the public APIs answer:
-```bash
-python -c "from app import tools,db; db.init(); g=tools.geocode_address('12 rue de la Paroisse, Versailles'); print(g); print(tools.get_zoning(g['lon'],g['lat']))"
-```
-If `get_zoning` returns a zone with a `rules_url`, pre-index that PLU before the demo (big PDFs take a minute):
-`python -m scripts.ingest_plu "12 rue de la Paroisse, 78000 Versailles"`
+Optional: pre-index a town's rules so the first run is fast:
+`python -m scripts.ingest_plu "20 rue de Paris, 93100 Montreuil"`.
+Benchmark: `python -m scripts.build_truth && python -m scripts.eval --n 3` (costs a few dollars of API usage).
+Deploy: the `Dockerfile` runs `uvicorn app.main:app` on `$PORT` (the live demo runs on Fly.io).
 
-## Demo safety net
-Every successful run is saved to `runs/last.json`. If the venue network is slow, open `http://localhost:8000/?replay` and
-click the button: it plays the last real run back with the same live trace, map and result card.
+## Limitations (honest list)
 
-## Data layer (Aiven)
-- **PostgreSQL** (`DATABASE_URL`): `rule_chunks` (PLU text per page and zone, French full-text index), `memory` (past analyses per
-  parcel and commune; the agent recalls them), `api_cache` (every public-API answer, so repeat runs are instant).
-- `GET /api/stats` shows the counts; the header of the UI shows them live.
+- When the address point falls on the street, it uses the nearest plot and says so.
+- Some towns publish their rules as a zip or don't publish them at all; the agent then says it couldn't read them.
+- National thresholds and CERFA numbers were checked against notary and town-hall guides, not legal advice.
+- Learning from town-hall outcomes (accepted / bounced / which document was requested) is the next step; today the
+  memory stores past analyses per plot and town.
+- No login or rate limit: it's a hackathon demo.
 
-## Evidence (before / after)
-```bash
-python -m scripts.build_truth   # ground truth from the official Géoportail (no model involved)
-python -m scripts.eval          # baseline = one Claude call with no data, vs the agent; writes eval/RESULTS.md (~$3-5 of credits)
-```
-Spot-check 2-3 truth rows on https://www.geoportail-urbanisme.gouv.fr/map/ before quoting the numbers.
+## Repo map
 
-## Deploy
-`Dockerfile` runs `uvicorn app.main:app` on `$PORT`. Set `ANTHROPIC_API_KEY` and `DATABASE_URL`.
-
-## Code
-- `app/agent.py`: tool-use loop (Claude Opus 5.5, adaptive thinking), streams every step
-- `app/tools.py`: Base Adresse Nationale, IGN API Carto (cadastre, GPU zones, servitudes, prescriptions), Géorisques, PLU PDF indexing and search, memory
-- `app/national_rules.py`: Code de l'urbanisme thresholds (DP / PC / architect / review time / CERFA)
-- `app/db.py`: Postgres or SQLite
-- `static/index.html`: the UI (map, live agent trace, result card)
-
----
-
-# Hackathon notes: Accel AI Innovate, Paris
-
-Thursday 2026-10-22, 08:00–20:00, Metafore Boétie (St Augustin), 5 rue La Boétie, Paris.
-Run by Accel × Iterate on BuilderBase. Sponsor for infra: **Aiven**. Patrik entered solo, open to a team.
-
-- [`docs/CRITERIA.md`](docs/CRITERIA.md): the five judging criteria, word for word, and what scores on each
-- [`docs/SUBMISSION.md`](docs/SUBMISSION.md): the five submission items and a checklist
-
-- [`pitch/`](pitch/): one-liner, 3-minute demo script, one pitch slide (fill in once the idea is picked)
-- [`CLAUDE.md`](CLAUDE.md): rules for Claude sessions building here
-
-## The challenge (organiser mail, 2026-10-21)
-
-> Build a working product where one or more agents depend on data to deliver value for a specific user. That
-> could mean querying large datasets, reacting to event streams, keeping long-term memory, combining many sources
-> or improving over time from past runs. You choose the customer and the problem.
->
-> Use any models, frameworks and tools you like. Deploy your app to our sponsor Aiven's Runtime, and use their
-> managed data infrastructure for your data layer where relevant (PostgreSQL, ClickHouse, Valkey, OpenSearch and
-> more) with free credits for every team. Strong teams need more than code. Product thinking, design and a credible
-> route to first users all count.
-
-## Judging criteria (slide, transcribed from photos)
-
-| # | Criterion | Question on the slide |
-|---|---|---|
-| 01 | **Customer problem & product value** | Is it a real problem for a clear user, and would they adopt the product? |
-| 02 | **Agent capability** | Does it show advanced agent behaviour, such as multi-step reasoning, autonomy, teamwork or learning, beyond a single LLM call? |
-| 03 | **Data at the core** | Does the product depend on using data well (freshness, scale, grounding, memory), or is the data just decoration? |
-| 04 | **Evidence it works** | Is there a measurable result, such as accuracy, cost, latency, success rate or time saved? |
-| 05 | **Execution & pitch** | "… point of difference and a credible route to first users?" (start of the line hidden in the photo) |
-
-Organisers said on stage: **pitching and explaining clearly what it is is very valuable.**
-
-## Submission (slide, transcribed from photos)
-
-1. Project name and one-line pitch
-2. 3 minute demo
-3. The data layer in action
-4. Before and after / comparison benchmarks
-5. One pitch slide
-
-The small button labels under each item (format: URL / video / file) were unreadable in the photos. Check them on
-the BuilderBase challenge page.
-
-## Credits on the day
-
-Anthropic $100 / person · OpenAI $50 / person · Modal $100 / person · Vercel $120 AI Gateway / person ·
-ElevenLabs 110k credits / person · Supabase $25 / person · Lovable credits · n8n Cloud Pro 1 month ·
-Lightdash Cloud Pro 1 month / team · Miro enterprise 1 month · Aiven credits per team.
-
-Side event: 18:00 fireside with Mati Staniszewski (ElevenLabs CEO), separate Luma sign-up: https://luma.com/kbh75rj8
+- `app/agent.py`: the tool-use loop, streams every step to the UI
+- `app/tools.py`: government data clients, rules indexing and search, memory
+- `app/national_rules.py`: Code de l'urbanisme thresholds
+- `static/index.html`: UI (map, live agent trace, result card, replay mode)
+- `scripts/`: rules ingestion, ground truth, benchmark · `eval/`: cases, truth, results · `pitch/`: slide, demo video, screenshots
+- `docs/`: hackathon brief and judging criteria
